@@ -1,0 +1,117 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  STUDENT
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Account {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+
+  sessions             Session[]
+  accountOrganizations AccountOrganization[]
+  sentInvitations      Invitation[]          @relation("InvitationSender")
+  receivedInvitations  Invitation[]          @relation("InvitationReceiver")
+  PasswordReset        PasswordReset[]
+  TokenBlacklist       TokenBlacklist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Organization {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  accountOrganizations AccountOrganization[]
+  invitations          Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AccountOrganization {
+  accountId Int
+  account   Account @relation(fields: [accountId], references: [id])
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  role Role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([accountId, organizationId])
+}
+
+model Session {
+  id        Int     @id @default(autoincrement())
+  accountId Int
+  token     String  @unique
+  account   Account @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TokenBlacklist {
+  id        Int      @id @default(autoincrement())
+  accountId Int
+  account   Account? @relation(fields: [accountId], references: [id])
+
+  token String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Invitation {
+  id Int @id @default(autoincrement())
+
+  senderId Int
+  sender   Account @relation("InvitationSender", fields: [senderId], references: [id])
+
+  receiverId Int
+  receiver   Account @relation("InvitationReceiver", fields: [receiverId], references: [id])
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  role   Role
+  status InvitationStatus @default(PENDING)
+
+  token String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PasswordReset {
+  id        Int     @id @default(autoincrement())
+  accountId Int
+  account   Account @relation(fields: [accountId], references: [id])
+
+  token String @unique
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
